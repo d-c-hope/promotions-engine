@@ -12,8 +12,8 @@ scalaVersion := "2.12.8"
 
 // It's possible to define many kinds of settings, such as:
 
-name := "hello-world"
-organization := "ch.epfl.scala"
+name := "promotions"
+organization := "com.craftcodehouse"
 version := "1.0"
 
 // Note, it's not required for you to define these three settings. These are
@@ -24,6 +24,19 @@ version := "1.0"
 // Want to use a published library in your project?
 // You can define other libraries as dependencies in your build like this:
 libraryDependencies += "org.typelevel" %% "cats-core" % "1.6.0"
+
+val kafkaVersion = "2.3.0"
+libraryDependencies += "org.apache.kafka" %% "kafka" % kafkaVersion
+libraryDependencies += "org.apache.kafka" % "kafka-streams" % kafkaVersion
+
+resolvers += "confluent" at "http://packages.confluent.io/maven/"
+libraryDependencies += "io.confluent" % "kafka-streams-avro-serde" % "5.3.0"
+libraryDependencies += "org.apache.avro" % "avro" % "1.9.0"
+libraryDependencies += "org.apache.avro" % "avro-maven-plugin" % "1.9.0"
+
+
+mainClass in (Compile, run) := Some("com.craftcodehouse.promotions.accumulator.WordCountDemo")
+
 // Here, `libraryDependencies` is a set of dependencies, and by using `+=`,
 // we're adding the cats dependency to the set of dependencies that sbt will go
 // and fetch when it starts up.
