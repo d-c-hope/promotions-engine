@@ -81,8 +81,9 @@ object WordCountDemo {
 
 //      val personStream: KStream<String, Person> = personAvroStream.mapValues { personAvro ->
       val personStream: KStream[String, Person] = personAvroStream.mapValues { personAvro =>
-      val person = Person("david", 34)
-      person
+        val person = Person("david", 34)
+        print(person)
+        person
     }
 
 
