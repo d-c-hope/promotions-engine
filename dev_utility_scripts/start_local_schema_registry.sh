@@ -1,0 +1,1 @@
+/usr/local/schema-registry/bin/schema-registry-start dev_utility_scripts/schema-registry.properties
