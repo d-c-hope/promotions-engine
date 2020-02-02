@@ -3,6 +3,7 @@ from confluent_kafka import Producer
 from confluent_kafka import avro
 from confluent_kafka.avro import AvroProducer
 import random
+import time
 
 
 value_schema_str = """
@@ -53,11 +54,11 @@ avroProducer = AvroProducer({
     'schema.registry.url': 'http://localhost:8081'
     }, default_key_schema=key_schema, default_value_schema=value_schema)
 
-for i in range(200):
+for i in range(20):
 
-    customerId = random.randint(1, 10)¶
-    action = random.randint(1, 4)¶
-    stake = random.randint(50, 100)¶
+    customerId = random.randint(1, 10)
+    action = random.randint(1, 4)
+    stake = random.randint(50, 100)
 
 
     # value = {"game": "randomgame", "action": "action 4", "customerID": "{}".format(customerId), "stake": 23 }
@@ -65,7 +66,7 @@ for i in range(200):
 
     value = {"game": "randomgame", "action": "action {}".format(action),
              "customerID": "{}".format(customerId), "stake": stake}
-    key = {"customerID": customerId}
+    key = {"customerID": "{}".format(customerId)}
 
 
     print("adding event")
