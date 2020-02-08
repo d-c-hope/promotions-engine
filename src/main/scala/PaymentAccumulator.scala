@@ -43,7 +43,7 @@ object WordCountDemo {
     val props = new Properties
     props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-promotions")
     props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
-    props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0)
+    props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0.asInstanceOf[Object])
     props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
 
 
@@ -83,9 +83,18 @@ object WordCountDemo {
       val personStream: KStream[String, Person] = personAvroStream.mapValues { personAvro =>
         val person = Person("david", 34)
         print(person)
-        person
+        GenericRecord(person)
+//        person
     }
 
+
+//    import org.apache.kafka.streams.kstream.Printed
+//    patternKStream.print(Printed.toSysOut[String, Nothing].withLabel("patterns"))
+//
+//    rewardsKStream.print(Printed.toSysOut[String, Nothing].withLabel("rewards"))
+//
+//    purchaseKStream.print(Printed.toSysOut[String, Nothing].withLabel("purchases"))
+//
 
 //    val source = builder.stream("test-topic-1")
 
