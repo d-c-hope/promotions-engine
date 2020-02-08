@@ -21,19 +21,12 @@ import java.util
 //.stream(personsAvroTopic, Consumed.with(Serdes.String(), avroSerde))
 
 
-//val personStream: KStream<String, Person> = personAvroStream.mapValues { personAvro ->
-//val person = Person(
-//firstName = personAvro["firstName"].toString(),
-//lastName = personAvro["lastName"].toString(),
-//birthDate = Date(personAvro["birthDate"] as Long)
-//)
-//logger.debug("Person: $person")
-//person
-//}
+case class Person(customerID: String, email: String, firstName: String)
+case class GameStake(game: String, action: String, customerId: String, stake: Int)
 
 case class Person(customerID: String, stake: Int)
 
-object WordCountDemo {
+object BetsAccumulator {
 
 //  def doSetup():  Unit = {
 //
@@ -43,7 +36,7 @@ object WordCountDemo {
     val props = new Properties
     props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-promotions")
     props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
-    props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0.asInstanceOf[Object])
+    props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0)
     props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
 
 
@@ -51,14 +44,6 @@ object WordCountDemo {
 //    props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, GenericAvroSerde)
     props.put("schema.registry.url", "http://my-schema-registry:8081")
 
-    // When you want to override serdes explicitly/selectively
-//    val serdeConfig = Collections.singletonMap("schema.registry.url", "http://my-schema-registry:8081")
-//    val keyGenericAvroSerde = new Nothing
-//    keyGenericAvroSerde.configure(serdeConfig, true) // `true` for record keys
-//
-//    val valueGenericAvroSerde = new Nothing
-//    valueGenericAvroSerde.configure(serdeConfig, false) // `false` for record values
-//    import scala.collection.JavaConversions.mapAsScalaMap
 
     val avroSerde = new GenericAvroSerde
     val jmap = new java.util.HashMap[String, String]()
@@ -78,29 +63,16 @@ object WordCountDemo {
     val personAvroStream: KStream[String, GenericRecord] = streamsBuilder.stream("test-topic-1", Consumed.`with`(Serdes.String(), avroSerde))
 
 //      .stream("test-topic-1", Consumed.with(Serdes.String(), avroSerde))
+//      val vm: ValueMapper[GenericRecord, Person] = personA => Person("david", 34)
+//      val personStream: KStream[String, Person] = personAvroStream.mapValues(vm)
 
-//      val personStream: KStream<String, Person> = personAvroStream.mapValues { personAvro ->
-      val personStream: KStream[String, Person] = personAvroStream.mapValues { personAvro =>
-        val person = Person("david", 34)
-        print(person)
-        GenericRecord(person)
-//        person
+
+    val personStream: KStream[String, Person] = personAvroStream.mapValues {
+      personA => Person("david", 34)
     }
 
+    personStream.print(Printed.toSysOut())
 
-//    import org.apache.kafka.streams.kstream.Printed
-//    patternKStream.print(Printed.toSysOut[String, Nothing].withLabel("patterns"))
-//
-//    rewardsKStream.print(Printed.toSysOut[String, Nothing].withLabel("rewards"))
-//
-//    purchaseKStream.print(Printed.toSysOut[String, Nothing].withLabel("purchases"))
-//
-
-//    val source = builder.stream("test-topic-1")
-
-//    val counts = source.flatMapValues((value) => util.Arrays.asList(value.toLowerCase(Locale.getDefault).split(" "))).groupBy((key, value) => value).count
-    // need to override value serde to Long type
-//    counts.toStream.to("streams-wordcount-output", Produced.`with`(Serdes.String, Serdes.Long))
 
     val streams = new KafkaStreams(streamsBuilder.build, props)
 
@@ -124,7 +96,7 @@ object WordCountDemo {
 }
 
 
-class PaymentAccumulator {
+class BetsAccumulator {
 
 }
 
