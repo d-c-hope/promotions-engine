@@ -35,7 +35,7 @@ libraryDependencies += "org.apache.avro" % "avro" % "1.9.0"
 libraryDependencies += "org.apache.avro" % "avro-maven-plugin" % "1.9.0"
 
 
-mainClass in (Compile, run) := Some("com.craftcodehouse.promotions.accumulator.WordCountDemo")
+mainClass in (Compile, run) := Some("com.craftcodehouse.promotions.accumulator.BetsAccumulator")
 
 // Here, `libraryDependencies` is a set of dependencies, and by using `+=`,
 // we're adding the cats dependency to the set of dependencies that sbt will go

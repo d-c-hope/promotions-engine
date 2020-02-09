@@ -4,72 +4,55 @@ from confluent_kafka import avro
 from confluent_kafka.avro import AvroProducer
 import random
 import time
+from models import customer, gameStake
 
 
-value_schema_str = """
-{
-   "namespace": "cch.game.event",
-   "name": "value",
-   "type": "record",
-   "fields" : [
-     {
-       "name" : "game",
-       "type" : "string"
-     },
-     {
-       "name" : "action",
-       "type" : "string"
-     },
-     {
-       "name" : "customerID",
-       "type" : "string"
-     },
-     {
-       "name" : "stake",
-       "type" : "int"
-     }
-   ]
-}
-"""
-
-key_schema_str = """
-{
-   "namespace": "cch.game.event",
-   "name": "key",
-   "type": "record",
-   "fields" : [
-     {
-       "name" : "customerID",
-       "type" : "string"
-     }
-   ]
-}
-"""
-
-value_schema = avro.loads(value_schema_str)
-key_schema = avro.loads(key_schema_str)
 
 avroProducer = AvroProducer({
     'bootstrap.servers': 'localhost:9092',
     'schema.registry.url': 'http://localhost:8081'
-    }, default_key_schema=key_schema, default_value_schema=value_schema)
+    }, default_key_schema=gameStake.game_key_schema, default_value_schema=gameStake.game_value_schema)
 
-for i in range(20):
+sleepTime = 0.1
+def produceGameEvent():
+    for i in range(20):
 
-    customerId = random.randint(1, 10)
-    action = random.randint(1, 4)
-    stake = random.randint(50, 100)
+        customerId = random.randint(1, 10)
+        action = random.randint(1, 4)
+        stake = random.randint(50, 100)
+
+        value = {"game": "randomgame", "action": "action {}".format(action),
+                 "customerID": "{}".format(customerId), "stake": stake}
+        key = {"customerID": "{}".format(customerId)}
+
+        print("adding event")
+        avroProducer.produce(topic='test-topic-game1', value=value, key=key)
+        time.sleep(sleepTime)
 
 
-    # value = {"game": "randomgame", "action": "action 4", "customerID": "{}".format(customerId), "stake": 23 }
-    # key = {"customerID": "23416"}
+firstNames = ["david", "andrew", "mark", "jason", "tommy", "harold", "guido"]
+lastNames = ["smith", "jones", "moses", "fielder", "thomas", "ferguson", "rossum"]
+key_schema = avro.loads('{"type": "string"}')
+def produceCustomerEvent():
 
-    value = {"game": "randomgame", "action": "action {}".format(action),
-             "customerID": "{}".format(customerId), "stake": stake}
-    key = {"customerID": "{}".format(customerId)}
+    for i in range(20):
 
+        customerId = i
+        firstNameIdx = random.randint(0, 6)
+        lastNameIdx = random.randint(0, 6)
+        firstName = firstNames[firstNameIdx]
+        lastName = lastNames[lastNameIdx]
+        email = "{}.{}@mailinator.com".format(firstName,lastName)
 
-    print("adding event")
-    avroProducer.produce(topic='test-topic-1', value=value, key=key)
-    time.sleep(0.5)
+        key = "{}".format(customerId)
+        value = {"customerID": "".format(customerId), "firstName": "{}".format(firstName),
+                 "email": "{}".format(email)}
+
+        print("adding customer")
+        avroProducer.produce(topic='test-topic-customer1', value=value, key=key, key_schema=key_schema, value_schema=customer.customer_value_schema)
+        time.sleep(sleepTime)
+
+produceCustomerEvent()
+produceGameEvent()
+
 avroProducer.flush()
