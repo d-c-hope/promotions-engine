@@ -35,7 +35,7 @@ lastNames = ["smith", "jones", "moses", "fielder", "thomas", "ferguson", "rossum
 key_schema = avro.loads('{"type": "string"}')
 def produceCustomerEvent():
 
-    for i in range(20):
+    for i in range(22):
 
         customerId = i
         firstNameIdx = random.randint(0, 6)
@@ -53,6 +53,6 @@ def produceCustomerEvent():
         time.sleep(sleepTime)
 
 produceCustomerEvent()
-produceGameEvent()
+# produceGameEvent()
 
 avroProducer.flush()

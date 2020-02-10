@@ -18,7 +18,7 @@ import java.util.Collections
 import java.util
 
 
-case class Person(customerID: String, email: String, firstName: String)
+case class Customer(customerID: String, email: String, firstName: String)
 case class GameStake(game: String, action: String, customerId: String, stake: Int)
 
 
@@ -29,7 +29,7 @@ object BetsAccumulator {
     val props = new Properties
     props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-promotions")
     props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
-    props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0)
+    props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0.asInstanceOf[Integer])
     props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
 
 
@@ -47,17 +47,23 @@ object BetsAccumulator {
     val eventAvroStream: KStream[GenericRecord, GenericRecord] = eventStreamsBuilder.stream("test-topic-game-1", Consumed.`with`(avroSerde, avroSerde))
 
     val customerStreamsBuilder = new StreamsBuilder
-    val customerAvroTable: KTable[String, GenericRecord] = customerStreamsBuilder.table("test-topic-customer1", Consumed.`with`(Serdes.String(), avroSerde))
-    customerAvroTable.toStream().print(Printed.toSysOut())
+    val customerAvroStream: KStream[String, GenericRecord] = customerStreamsBuilder.stream("test-topic-customer1", Consumed.`with`(Serdes.String(), avroSerde))
+    val customerStream: KStream[String, Customer] = customerAvroStream.mapValues {
+      personA => Customer("111", "andy@mailinator.com", "and")
+    }
+    // note easier to make a table of persons by doing mapvalues to the table direct from the stream
+    val customerTable: KTable[String, Customer] = customerStream.groupByKey().reduce((aggValue, newValue) => aggValue)
+//    val customerAvroTable: KTable[String, GenericRecord] = customerStreamsBuilder.table("test-topic-customer1", Consumed.`with`(Serdes.String(), avroSerde))
+//    customerAvroTable.toStream().print(Printed.toSysOut())
 
 //    val personStream: KStream[String, Person] = personAvroStream.mapValues {
 //      personA => Person("111", "andy@mailinator.com", "and")
 //    }
 //
-//    personStream.print(Printed.toSysOut())
+    customerTable.toStream().print(Printed.toSysOut())
+//    customerTable.p
 
-
-    val customerTable = new KafkaStreams(customerStreamsBuilder.build, props)
+    val customerStreamI = new KafkaStreams(customerStreamsBuilder.build, props)
 //    val eventStream = new KafkaStreams(streamsBuilder.build, props)
 
     val latch = new CountDownLatch(1)
@@ -65,13 +71,13 @@ object BetsAccumulator {
     Runtime.getRuntime.addShutdownHook(new Thread("streams-wordcount-shutdown-hook") {
       override def run(): Unit = {
 //        streams.close
-        customerTable.close
+        customerStreamI.close
         latch.countDown()
       }
     })
     try {
 //      streams.start
-      customerTable.start
+      customerStreamI.start
       latch.await()
     } catch {
       case e: Throwable =>
