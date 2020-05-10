@@ -1,0 +1,1 @@
+${MY_SCHEMA_REG}/bin/schema-registry-stop

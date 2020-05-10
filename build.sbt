@@ -1,6 +1,6 @@
 // The simplest possible sbt build file is just one line:
 
-scalaVersion := "2.12.8"
+scalaVersion := "2.13.2"
 // That is, to create a valid sbt build, all you've got to do is define the
 // version of Scala you'd like your project to use.
 
@@ -23,16 +23,21 @@ version := "1.0"
 
 // Want to use a published library in your project?
 // You can define other libraries as dependencies in your build like this:
-libraryDependencies += "org.typelevel" %% "cats-core" % "1.6.0"
+libraryDependencies += "org.typelevel" %% "cats-core" % "2.1.1"
 
-val kafkaVersion = "2.3.0"
-libraryDependencies += "org.apache.kafka" %% "kafka" % kafkaVersion
+//val kafkaVersion = "2.4.1"
+val kafkaVersion = "5.4.0-ccs"
+//libraryDependencies += "org.apache.kafka" %% "kafka" % kafkaVersion
 libraryDependencies += "org.apache.kafka" % "kafka-streams" % kafkaVersion
-
-resolvers += "confluent" at "http://packages.confluent.io/maven/"
-libraryDependencies += "io.confluent" % "kafka-streams-avro-serde" % "5.3.0"
+libraryDependencies += "org.apache.kafka" % "kafka-clients" % kafkaVersion
 libraryDependencies += "org.apache.avro" % "avro" % "1.9.0"
 libraryDependencies += "org.apache.avro" % "avro-maven-plugin" % "1.9.0"
+
+resolvers += "confluent" at "https://packages.confluent.io/maven/"
+// note that 5.4 of this is kafka/kafka-streams 2.4.If you change the above, may need to change this
+// or may be able to change the above to libraryDependencies += "org.apache.kafka" % "kafka-streams" % "5.4.0"
+// now done the latter as version conflicts were a problem
+libraryDependencies += "io.confluent" % "kafka-streams-avro-serde" % "5.4.0"
 
 
 mainClass in (Compile, run) := Some("com.craftcodehouse.promotions.accumulator.BetsAccumulator")

@@ -37,7 +37,7 @@ def produceCustomerEvent():
 
     for i in range(22):
 
-        customerId = i
+        customerId = i % 8
         firstNameIdx = random.randint(0, 6)
         lastNameIdx = random.randint(0, 6)
         firstName = firstNames[firstNameIdx]
@@ -45,10 +45,10 @@ def produceCustomerEvent():
         email = "{}.{}@mailinator.com".format(firstName,lastName)
 
         key = "{}".format(customerId)
-        value = {"customerID": "".format(customerId), "firstName": "{}".format(firstName),
+        value = {"customerID": "{}".format(customerId), "firstName": "{}".format(firstName),
                  "email": "{}".format(email)}
 
-        print("adding customer")
+        print("adding customer {}".format(value))
         avroProducer.produce(topic='test-topic-customer1', value=value, key=key, key_schema=key_schema, value_schema=customer.customer_value_schema)
         time.sleep(sleepTime)
 
