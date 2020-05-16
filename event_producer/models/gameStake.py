@@ -27,20 +27,20 @@ value_schema_str = """
 }
 """
 
-key_schema_str = """
-{
-   "namespace": "cch.game.event",
-   "name": "key",
-   "type": "record",
-   "fields" : [
-     {
-       "name" : "customerID",
-       "type" : "string"
-     }
-   ]
-}
-"""
+# key_schema_str = """
+# {
+#    "namespace": "cch.game.event",
+#    "name": "key",
+#    "type": "record",
+#    "fields" : [
+#      {
+#        "name" : "customerID",
+#        "type" : "string"
+#      }
+#    ]
+# }
+# """
 
-game_key_schema = avro.loads(key_schema_str)
+# game_key_schema = avro.loads(key_schema_str)
 game_value_schema = avro.loads(value_schema_str)
 

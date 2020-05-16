@@ -14,7 +14,7 @@ c = AvroConsumer({
     'schema.registry.url': 'http://localhost:8081',
     'auto.offset.reset': 'earliest'})
 
-c.subscribe(['test-topic-1'])
+c.subscribe(['test-topic-customer1'])
 
 while True:
     try:
