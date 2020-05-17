@@ -10,6 +10,7 @@ import java.util.Properties
 import java.util.concurrent.CountDownLatch
 
 import io.confluent.kafka.streams.serdes.avro.GenericAvroSerde
+import org.apache.kafka.streams.processor.{ProcessorContext, StateStore}
 import org.apache.kafka.streams.state.{KeyValueBytesStoreSupplier, KeyValueStore, StoreBuilder, StoreSupplier, Stores}
 
 
@@ -49,7 +50,7 @@ object BetsAccumulator {
       customer
     }
 
-    val gr: Grouped[String, Customer] = Grouped.`with`(Serdes.String(), new CustomerSerde)
+    val gr: Grouped[String, Customer] = Grouped.`with`(Serdes.String(), new GenericCaseClassSerde[Customer])
     val customerTable = customerStream.groupByKey(gr).reduce { (aggValue, newValue) =>
       newValue
     }
@@ -58,7 +59,7 @@ object BetsAccumulator {
   }
 
   def setupCustomerEventJoiner(gameEventStream: KStream[String, GameEvent],
-                               customerTable: KTable[String, Customer]) : Unit = {
+                               customerTable: KTable[String, Customer]) : KStream[String, CustomerEventJoin] = {
 
     val valueJoiner: ValueJoiner[GameEvent, Customer, CustomerEventJoin] = (gameEvent:GameEvent, customer: Customer) => {
 //      print("Customer is " + customer + "game event is " + gameEvent, "customer id is " + gameEvent.customerId)
@@ -66,12 +67,22 @@ object BetsAccumulator {
         gameEvent.game, gameEvent.action, gameEvent.stake)
     }
 
+
     val joinedStream = gameEventStream.leftJoin(customerTable, valueJoiner,
-      Joined.`with`(Serdes.String(), new GameEventSerde, new CustomerSerde))
+      Joined.`with`(Serdes.String(), new GameEventSerde, new GenericCaseClassSerde[Customer]))
+
+    //      // NOT NEEDED
+//    val passAll: Predicate[String, CustomerEventJoin] = (key: String, event: CustomerEventJoin) => true
+//    val splitKStreamList = joinedStream.branch(passAll, passAll)
+
+    joinedStream
+
+  }
+
+  def setupAccumlationTable(joinedStream: KStream[String, CustomerEventJoin]):KTable[String, CustomerAccumulation] = {
 
     val gr: Grouped[String, CustomerEventJoin] = Grouped.`with`(Serdes.String(), new CustomerEventJoinSerde)
 
-    //need to replace this with a transform values
     val aggInit: Initializer[CustomerAccumulation] = () => CustomerAccumulation("", 0)
     val agg: Aggregator[String, CustomerEventJoin, CustomerAccumulation] =
       (key: String, value: CustomerEventJoin, aggregate: CustomerAccumulation) => {
@@ -79,34 +90,59 @@ object BetsAccumulator {
     }
 
     val accTable = joinedStream.groupByKey(gr).aggregate(aggInit, agg, Materialized.`with`(Serdes.String(), new CustomerAccumulationSerde))
-    accTable.toStream().print(Printed.toSysOut())
-    val accStream = accTable.toStream()
-
-//    val x = new Predicate[String, CustomerAccumulation]((key: String, event: CustomerAccumulation) => true)
-    val passAll: Predicate[String, CustomerAccumulation] = (key: String, event: CustomerAccumulation) => true
-
-//    val passAll = new Predicate[String, CustomerAccumulation] {
-//      override def test(key: String, value: CustomerAccumulation): Boolean = true
-//    }
-
-
-    val passOverX: Predicate[String, CustomerAccumulation] = (key: String, event: CustomerAccumulation) => {
-      if (event.stakeAccumulation > 2000) true else false
-    }
-    val splitKStreamList = accStream.branch(passAll, passOverX)
-    val kStreamEnd = splitKStreamList(0)
-    kStreamEnd.to("test-topic-aggs1")
-    val kStreamForAgg = splitKStreamList(1)
-
-    //    val customerTable = customerStream.groupByKey(gr).reduce { (aggValue, newValue) =>
-//      newValue
-//    }
-//
-    kStreamEnd.print(Printed.toSysOut())
+//    accTable.toStream().print(Printed.toSysOut())
+//    val accStream = accTable.toStream()
+    return accTable
 
   }
 
-  def handleAccumulationReset = {
+  def setupRewardsStream(joinedStream: KStream[String, CustomerEventJoin]): KStream[String, CustomerReward] = {
+    println("Setting up rewards stream")
+    val transformerSupplier: ValueTransformerSupplier[CustomerEventJoin, CustomerReward] = () => {
+      new ValueTransformer[CustomerEventJoin, CustomerReward]() {
+
+        var context: ProcessorContext = null
+        var store: KeyValueStore[String, Int] = null
+
+        override def init(context: ProcessorContext): Unit = {
+          println("Setting up transform processor")
+          store = context.getStateStore("stakeAccumulationStore").asInstanceOf[KeyValueStore[String, Int]]
+        }
+
+        override def transform(value: CustomerEventJoin): CustomerReward = {
+          // this bit needs the logic to get the value from teh store, add the latest even
+          // and either emit null or a reward event
+//          println("In transform*********************************************\n\n")
+          val rewardAccumulated = store.get(value.customerID)
+          val eventStake = value.stake
+          if (rewardAccumulated + eventStake > 1000) {
+            store.put(value.customerID, 0)
+            return CustomerReward(value.customerID)
+          }
+          else {
+            store.put(value.customerID, rewardAccumulated + eventStake)
+            return null;
+          }
+
+        }
+
+        override def close(): Unit = {
+
+        }
+      }
+    }
+
+    val transformedStream = joinedStream.transformValues(transformerSupplier, "stakeAccumulationStore")
+
+    val passNoneNull: Predicate[String, CustomerReward] = (key: String, value: CustomerReward) => {
+      if(value != null) true else false
+    }
+    transformedStream.filter(passNoneNull)
+
+  }
+
+//  def handleAccumulationReset = {
+  // See above now, nearly done
 //    // create store, need to do this further up
 
     // See transform values. Need to do something like get value out of the store add the latest value
@@ -118,7 +154,7 @@ object BetsAccumulator {
     // Problem is, the table might not get pushed downsstream befoe the update where the flag goes off
     // Maybe this can't work
 
-  }
+//  }
 
   def main(args: Array[String]): Unit = {
 
@@ -126,7 +162,7 @@ object BetsAccumulator {
 //    System.exit(0)
 
     val props = new Properties
-    props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-promotionsx23754")
+    props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-promotionsx237593")
     props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
     props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0.asInstanceOf[Integer])
     props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
@@ -139,8 +175,7 @@ object BetsAccumulator {
 
     val streamsBuilder = new StreamsBuilder
 
-//    val stakeAccumulationStore: KeyValueStore[String, Int]
-    val storeSupplier: KeyValueBytesStoreSupplier = Stores.inMemoryKeyValueStore("stakeAccumulationStore");         1
+    val storeSupplier: KeyValueBytesStoreSupplier = Stores.inMemoryKeyValueStore("stakeAccumulationStore");
     val storeBuilder: StoreBuilder[KeyValueStore[String, Integer]]  =
       Stores.keyValueStoreBuilder(storeSupplier,
         Serdes.String(),
@@ -149,7 +184,20 @@ object BetsAccumulator {
 
     val customerTable: KTable[String, Customer]  = setupCustomerStream(props, streamsBuilder, avroSerde)
     val gameEventStream = setupGameEventStream(props, streamsBuilder, avroSerde)
-    setupCustomerEventJoiner(gameEventStream, customerTable)
+    val joinedStream = setupCustomerEventJoiner(gameEventStream, customerTable)
+
+//    val kStreamForAccTable = branchedStream(0)
+//    val kStreamForRewards = branchedStream(1)
+//    println("\n\n K stream for rewards" + kStreamForRewards)
+    val accTable = setupAccumlationTable(joinedStream)
+    val rewardsStream = setupRewardsStream(joinedStream)
+    // TODO work out why the rewards stream is empty - answer is we don't need to branch if we want a copy
+    // branching is only for when you want to split the stream up
+    rewardsStream.print(Printed.toSysOut())
+    accTable.toStream().print(Printed.toSysOut())
+//    kStreamForRewards.print(Printed.toSysOut())
+//    kStreamEnd.to("test-topic-aggs1")
+
 
     val kEventStream = new KafkaStreams(streamsBuilder.build, props)
 
@@ -175,10 +223,6 @@ object BetsAccumulator {
 }
 
 
-class BetsAccumulator {
-
-}
-
 
 
 
@@ -200,3 +244,24 @@ class BetsAccumulator {
 
 //    props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, GenericAvroSerde)
 //    props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, GenericAvroSerde)
+
+
+
+
+//    class AccValueTransformer extends ValueTransformer[CustomerEventJoin, CustomerAccumulation] {
+//
+//      override def init(context: ProcessorContext): Unit = {
+//        stateStore = context.getStateStore("sfgfdgdf")
+//      }
+//
+//      override def transform(value: CustomerEventJoin): CustomerAccumulation = {
+//          return CustomerAccumulation("3454343", 45)
+//      }
+//
+//      override def close(): Unit = {
+//
+//      }
+//    }
+//    new ValueTransformer[](context) {}
+
+//    kStreamEnd.print(Printed.toSysOut())
