@@ -33,12 +33,14 @@ def produceGameEvent():
         time.sleep(sleepTime)
 
 
-firstNames = ["david", "andrew", "mark", "jason", "philippa","tommy", "harold", "guido", "martin", "kate", "anna"]
-lastNames = ["smith", "jones", "adams", "fielder", "thomas", "ferguson", "rossum", "george", "knapp", "taylor", "li"]
+firstNames = ["david", "andrew", "mark", "jason", "philippa","tommy", "harold",
+                "guido", "martin", "kate", "anna", "ralph"]
+lastNames = ["smith", "jones", "adams", "fielder", "thomas", "ferguson", "rossum",
+                "george", "knapp", "taylor", "li", "heslop"]
 # key_schema = avro.loads('{"type": "string"}')
 def produceCustomerEvent():
 
-    for i in range(11):
+    for i in range(12):
 
         customerId = i
 #         firstNameIdx = random.randint(0, 6)

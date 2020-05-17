@@ -6,11 +6,11 @@ import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.kstream._
-import java.util
-import java.util.{Collections, Date, Locale, Properties}
+import java.util.Properties
 import java.util.concurrent.CountDownLatch
 
 import io.confluent.kafka.streams.serdes.avro.GenericAvroSerde
+import org.apache.kafka.streams.state.{KeyValueBytesStoreSupplier, KeyValueStore, StoreBuilder, StoreSupplier, Stores}
 
 
 object BetsAccumulator {
@@ -18,11 +18,10 @@ object BetsAccumulator {
   def setupGameEventStream(props: Properties, streamsBuilder: StreamsBuilder,
                            avroSerde: GenericAvroSerde): KStream[String, GameEvent] = {
 
-//    val gameEventStreamsBuilder = new StreamsBuilder
     val gameEventAvroStream = streamsBuilder.stream("test-topic-game1",
       Consumed.`with`(Serdes.String(), avroSerde))
     val gameEventStream: KStream[String, GameEvent] = gameEventAvroStream.mapValues { value =>
-      println("Processing game event")
+//      println("Processing game event")
       val customerID = value.get("customerID").toString
       val game = value.get("game").toString
       val action = value.get("action").toString
@@ -31,20 +30,17 @@ object BetsAccumulator {
 
       gameEvent
     }
-//    gameEventStream.print(Printed.toSysOut())
+
     return gameEventStream
-//    val kGameEventStream = new KafkaStreams(streamsBuilder.build, props)
-//    return kGameEventStream
   }
 
   def setupCustomerStream(props: Properties, streamsBuilder: StreamsBuilder,
           avroSerde: GenericAvroSerde): KTable[String, Customer] = {
 
-//    val customerStreamsBuilder = new StreamsBuilder
     val customerAvroStream = streamsBuilder.stream("test-topic-customer1",
       Consumed.`with`(Serdes.String(), avroSerde))
     val customerStream: KStream[String, Customer] = customerAvroStream.mapValues { value =>
-      println("Processing customer")
+//      println("Processing customer")
       val customerID = value.get("customerID").toString
       val email = value.get("email").toString
       val firstName = value.get("firstName").toString
@@ -58,9 +54,69 @@ object BetsAccumulator {
       newValue
     }
 
-//    customerTable.toStream().print(Printed.toSysOut())
     return customerTable
-//    new KafkaStreams(customerStreamsBuilder.build, props)
+  }
+
+  def setupCustomerEventJoiner(gameEventStream: KStream[String, GameEvent],
+                               customerTable: KTable[String, Customer]) : Unit = {
+
+    val valueJoiner: ValueJoiner[GameEvent, Customer, CustomerEventJoin] = (gameEvent:GameEvent, customer: Customer) => {
+//      print("Customer is " + customer + "game event is " + gameEvent, "customer id is " + gameEvent.customerId)
+      CustomerEventJoin(customer.customerID, customer.email, customer.firstName,
+        gameEvent.game, gameEvent.action, gameEvent.stake)
+    }
+
+    val joinedStream = gameEventStream.leftJoin(customerTable, valueJoiner,
+      Joined.`with`(Serdes.String(), new GameEventSerde, new CustomerSerde))
+
+    val gr: Grouped[String, CustomerEventJoin] = Grouped.`with`(Serdes.String(), new CustomerEventJoinSerde)
+
+    //need to replace this with a transform values
+    val aggInit: Initializer[CustomerAccumulation] = () => CustomerAccumulation("", 0)
+    val agg: Aggregator[String, CustomerEventJoin, CustomerAccumulation] =
+      (key: String, value: CustomerEventJoin, aggregate: CustomerAccumulation) => {
+      CustomerAccumulation(value.customerID, aggregate.stakeAccumulation + value.stake)
+    }
+
+    val accTable = joinedStream.groupByKey(gr).aggregate(aggInit, agg, Materialized.`with`(Serdes.String(), new CustomerAccumulationSerde))
+    accTable.toStream().print(Printed.toSysOut())
+    val accStream = accTable.toStream()
+
+//    val x = new Predicate[String, CustomerAccumulation]((key: String, event: CustomerAccumulation) => true)
+    val passAll: Predicate[String, CustomerAccumulation] = (key: String, event: CustomerAccumulation) => true
+
+//    val passAll = new Predicate[String, CustomerAccumulation] {
+//      override def test(key: String, value: CustomerAccumulation): Boolean = true
+//    }
+
+
+    val passOverX: Predicate[String, CustomerAccumulation] = (key: String, event: CustomerAccumulation) => {
+      if (event.stakeAccumulation > 2000) true else false
+    }
+    val splitKStreamList = accStream.branch(passAll, passOverX)
+    val kStreamEnd = splitKStreamList(0)
+    kStreamEnd.to("test-topic-aggs1")
+    val kStreamForAgg = splitKStreamList(1)
+
+    //    val customerTable = customerStream.groupByKey(gr).reduce { (aggValue, newValue) =>
+//      newValue
+//    }
+//
+    kStreamEnd.print(Printed.toSysOut())
+
+  }
+
+  def handleAccumulationReset = {
+//    // create store, need to do this further up
+
+    // See transform values. Need to do something like get value out of the store add the latest value
+    // see if it is bigger than the threshold, if it is then we emit a value
+    // Alternative to using the DSL and effectively adding 2 fields to accumulation (alongside absolute total)
+    // We will check if over threshold. If so reset to zero and set flag saying points can be added
+    // Then on subsequent message if flat is set we reset it
+    // Then we shall have a filter  that looks for the flag set.
+    // Problem is, the table might not get pushed downsstream befoe the update where the flag goes off
+    // Maybe this can't work
 
   }
 
@@ -70,7 +126,7 @@ object BetsAccumulator {
 //    System.exit(0)
 
     val props = new Properties
-    props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-promotionsx23254")
+    props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-promotionsx23754")
     props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
     props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0.asInstanceOf[Integer])
     props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
@@ -82,22 +138,20 @@ object BetsAccumulator {
     avroSerde.configure(jmap, false)
 
     val streamsBuilder = new StreamsBuilder
+
+//    val stakeAccumulationStore: KeyValueStore[String, Int]
+    val storeSupplier: KeyValueBytesStoreSupplier = Stores.inMemoryKeyValueStore("stakeAccumulationStore");         1
+    val storeBuilder: StoreBuilder[KeyValueStore[String, Integer]]  =
+      Stores.keyValueStoreBuilder(storeSupplier,
+        Serdes.String(),
+        Serdes.Integer());
+    streamsBuilder.addStateStore(storeBuilder)
+
     val customerTable: KTable[String, Customer]  = setupCustomerStream(props, streamsBuilder, avroSerde)
     val gameEventStream = setupGameEventStream(props, streamsBuilder, avroSerde)
+    setupCustomerEventJoiner(gameEventStream, customerTable)
 
-    val valueJoiner: ValueJoiner[GameEvent, Customer, String] = (gameEvent:GameEvent, customer: Customer) => {
-      String.format("Number: %d", 34);
-    }
-
-    val joinedStream = gameEventStream.leftJoin(customerTable, valueJoiner,
-      Joined.`with`(Serdes.String(), new GameEventSerde, new CustomerSerde))
-
-    joinedStream.print(Printed.toSysOut())
-
-//    val kCustomerStream = setupCustomerStream(props, avroSerde)
-//    val kGameEventStream = setupGameEventStream(props, avroSerde)
     val kEventStream = new KafkaStreams(streamsBuilder.build, props)
-//    print(kGameEventStream)
 
     val latch = new CountDownLatch(1)
     // attach shutdown handler to catch control-c
@@ -105,16 +159,12 @@ object BetsAccumulator {
       override def run(): Unit = {
         print("Stopping the streams")
         kEventStream.close
-//        kGameEventStream.close
-//        kCustomerStream.close
         latch.countDown()
       }
     })
     try {
       println("Starting the stream")
       kEventStream.start
-//      kGameEventStream.start
-//      kCustomerStream.start
       latch.await()
     } catch {
       case e: Throwable =>
