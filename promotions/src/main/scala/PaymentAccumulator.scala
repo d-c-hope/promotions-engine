@@ -14,7 +14,7 @@ import org.apache.kafka.streams.processor.{ProcessorContext, StateStore}
 import org.apache.kafka.streams.state.{KeyValueBytesStoreSupplier, KeyValueStore, StoreBuilder, StoreSupplier, Stores}
 
 
-object BetsAccumulator {
+object PaymentAccumulator {
 
   def setupGameEventStream(props: Properties, streamsBuilder: StreamsBuilder,
                            avroSerde: GenericAvroSerde): KStream[String, GameEvent] = {
