@@ -10,8 +10,11 @@ import java.util.Properties
 import java.util.concurrent.CountDownLatch
 
 import io.confluent.kafka.streams.serdes.avro.GenericAvroSerde
+import org.apache.avro.Schema.Parser
 import org.apache.kafka.streams.processor.{ProcessorContext, StateStore}
 import org.apache.kafka.streams.state.{KeyValueBytesStoreSupplier, KeyValueStore, StoreBuilder, StoreSupplier, Stores}
+
+import scala.io.Source
 
 
 object PaymentAccumulator {
@@ -134,6 +137,19 @@ object PaymentAccumulator {
 
     println("\n*******************\nRunning the app\n\n\n")
 
+//    val filename = "/customer_reward.avsc"
+//    val fileContents = Source.fromURL(getClass.getResource(filename)).mkString
+//    println(fileContents)
+//
+//    import org.apache.avro.generic.GenericData
+//    import org.apache.avro.generic.GenericRecord
+//    val parser = new Parser
+//    val schema = parser.parse(fileContents)
+//    val avroRecord = new GenericData.Record(schema)
+//    avroRecord.put("f1", "value1")
+//    avroRecord.
+
+
     val props = new Properties
     props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-promotionsx237593")
     props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
@@ -163,8 +179,8 @@ object PaymentAccumulator {
     val rewardsStream = setupRewardsStream(joinedStream)
 //    rewardsStream.print(Printed.toSysOut())
 //    accTable.toStream().print(Printed.toSysOut())
-    rewardsStream.to("test-topic-rewards1", Produced.`with`(Serdes.String()), )
-    accTable.toStream().to("test-topic-acctable1")
+    rewardsStream.to("test-topic-rewards1", Produced.`with`(Serdes.String(), new MyAvroSerde))
+//    accTable.toStream().to("test-topic-acctable1")
 
     val kEventStream = new KafkaStreams(streamsBuilder.build, props)
 

@@ -1,0 +1,11 @@
+{
+   "namespace": "cch.promotions",
+   "name": "customerreward",
+   "type": "record",
+   "fields" : [
+     {
+       "name" : "customerID",
+       "type" : "string"
+     },
+   ]
+}

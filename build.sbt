@@ -10,16 +10,16 @@ libraryDependencies += "org.typelevel" %% "cats-core" % "2.1.1"
 
 val kafkaVersion = "5.4.0-ccs"
 //libraryDependencies += "org.apache.kafka" %% "kafka" % kafkaVersion
-libraryDependencies += "org.apache.kafka" % "kafka-streams" % kafkaVersion
-libraryDependencies += "org.apache.kafka" % "kafka-clients" % kafkaVersion
-libraryDependencies += "org.apache.avro" % "avro" % "1.9.0"
-libraryDependencies += "org.apache.avro" % "avro-maven-plugin" % "1.9.0"
+ThisBuild / libraryDependencies += "org.apache.kafka" % "kafka-streams" % kafkaVersion
+ThisBuild / libraryDependencies += "org.apache.kafka" % "kafka-clients" % kafkaVersion
+ThisBuild / libraryDependencies += "org.apache.avro" % "avro" % "1.9.0"
+ThisBuild / libraryDependencies += "org.apache.avro" % "avro-maven-plugin" % "1.9.0"
 
-resolvers += "confluent" at "https://packages.confluent.io/maven/"
+ThisBuild / resolvers += "confluent" at "https://packages.confluent.io/maven/"
 // note that 5.4 of this is kafka/kafka-streams 2.4.If you change the above, may need to change this
 // or may be able to change the above to libraryDependencies += "org.apache.kafka" % "kafka-streams" % "5.4.0"
 // now done the latter as version conflicts were a problem
-libraryDependencies += "io.confluent" % "kafka-streams-avro-serde" % "5.4.0"
+ThisBuild / libraryDependencies += "io.confluent" % "kafka-streams-avro-serde" % "5.4.0"
 
 
 
@@ -37,7 +37,9 @@ libraryDependencies += "io.confluent" % "kafka-streams-avro-serde" % "5.4.0"
 
 lazy val promotions = (project in file("promotions"))
   .settings(
-    mainClass in (Compile, run) := Some("com.craftcodehouse.promotions.accumulator.BetsAccumulator")
+    mainClass in (Compile, run) := Some("com.craftcodehouse.promotions.accumulator.PaymentAccumulator") ,
+//    resourceDirectory in Compile := file(".") / "./src/main/resources",
+//    resourceDirectory in Runtime := file(".") / "./src/main/resources",
     // other settings
   )
 
