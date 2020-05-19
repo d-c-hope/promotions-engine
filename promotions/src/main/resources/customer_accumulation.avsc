@@ -1,0 +1,15 @@
+{
+   "namespace": "cch.promotions",
+   "name": "customeracumulation",
+   "type": "record",
+   "fields" : [
+     {
+       "name" : "customerID",
+       "type" : "string"
+     },
+     {
+       "name" : "stakeAccumulation",
+       "type" : "int"
+     }
+   ]
+}

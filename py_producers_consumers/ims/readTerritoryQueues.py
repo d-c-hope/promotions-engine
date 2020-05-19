@@ -3,11 +3,6 @@ from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.avro.serializer import SerializerError
 
 
-# avroProducer = AvroProducer({
-#     'bootstrap.servers': 'localhost:9092',
-#     'schema.registry.url': 'http://localhost:8081'
-#     }, default_key_schema=key_schema, default_value_schema=value_schema)
-
 c = AvroConsumer({
     'bootstrap.servers': 'localhost:9092',
     'group.id': 'groupid',
@@ -32,6 +27,6 @@ while True:
         print("AvroConsumer error: {}".format(msg.error()))
         continue
 
-    print(msg.value())
+    print("Topic: {} Message val: {}".format(msg.topic(), msg.value()))
 
 c.close()

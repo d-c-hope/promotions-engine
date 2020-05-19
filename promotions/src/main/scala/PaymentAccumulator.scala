@@ -5,12 +5,13 @@ import org.apache.kafka.common.serialization.{Deserializer, Serde, Serdes, Seria
 import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
-import org.apache.kafka.streams.kstream._
+import org.apache.kafka.streams.kstream.{Produced, _}
 import java.util.Properties
 import java.util.concurrent.CountDownLatch
 
 import io.confluent.kafka.streams.serdes.avro.GenericAvroSerde
 import org.apache.avro.Schema.Parser
+import org.apache.avro.generic.{GenericData, GenericRecord}
 import org.apache.kafka.streams.processor.{ProcessorContext, StateStore}
 import org.apache.kafka.streams.state.{KeyValueBytesStoreSupplier, KeyValueStore, StoreBuilder, StoreSupplier, Stores}
 
@@ -161,8 +162,9 @@ object PaymentAccumulator {
     val jmap = new java.util.HashMap[String, String]()
     jmap.put("schema.registry.url", "http://localhost:8081")
     avroSerde.configure(jmap, false)
-    val myAvroSerde = new MyAvroSerde
-    myAvroSerde.configure(jmap, false)
+
+    val rewardSerde = GetSerdes.getCustomerRewardAvroSerde(jmap)
+    val accSerde = GetSerdes.getCustomerAccumulationAvroSerde(jmap)
 
     val streamsBuilder = new StreamsBuilder
 
@@ -181,8 +183,8 @@ object PaymentAccumulator {
     val rewardsStream = setupRewardsStream(joinedStream)
 //    rewardsStream.print(Printed.toSysOut())
 //    accTable.toStream().print(Printed.toSysOut())
-    rewardsStream.to("test-topic-rewards1", Produced.`with`(Serdes.String(), myAvroSerde))
-//    accTable.toStream().to("test-topic-acctable1")
+    rewardsStream.to("test-topic-rewards1", Produced.`with`(Serdes.String(), rewardSerde))
+    accTable.toStream().to("test-topic-acctable1", Produced.`with`(Serdes.String(), accSerde))
 
     val kEventStream = new KafkaStreams(streamsBuilder.build, props)
 

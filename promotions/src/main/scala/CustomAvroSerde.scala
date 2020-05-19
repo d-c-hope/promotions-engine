@@ -1,6 +1,6 @@
 package com.craftcodehouse.promotions.accumulator
 
-import org.apache.avro.generic.GenericRecord
+import org.apache.avro.generic.{GenericData, GenericRecord}
 import org.apache.kafka.common.annotation.InterfaceStability
 import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.serialization.Serde
@@ -11,10 +11,19 @@ import java.util
 import com.craftcodehouse.promotions.accumulator.CustomerAccumulation
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 import io.confluent.kafka.streams.serdes.avro.{GenericAvroDeserializer, GenericAvroSerializer}
+import org.apache.avro.Schema
 
-class MyAvroSerde() extends Serde[CustomerReward] {
+//class CustomAvroSerde[T]
 
-  var inner: Serde[CustomerReward] = Serdes.serdeFrom(new MySerializer(), new MyDeserializer())
+class CustomAvroSerde[T](schema: Schema,
+                              converterTo: (GenericData.Record,T)=>Unit,
+                              converterFrom: (GenericRecord)=>T)
+
+  extends Serde[T] {
+
+  val iserializer = new CustomAvroSerializer[T](schema, converterTo)
+  val ideserializer = new CustomAvroDeserializer[T](schema, converterFrom)
+  var inner: Serde[T] = Serdes.serdeFrom(iserializer, ideserializer)
 
   //  def this(client: SchemaRegistryClient)
 //    if (client == null) {
@@ -24,8 +33,8 @@ class MyAvroSerde() extends Serde[CustomerReward] {
 //      new GenericAvroDeserializer(client));
 //  }
 
-  override def serializer: Serializer[CustomerReward] = inner.serializer
-  override def deserializer: Deserializer[CustomerReward] = inner.deserializer
+  override def serializer: Serializer[T] = inner.serializer
+  override def deserializer: Deserializer[T] = inner.deserializer
 
   override def configure(serdeConfig: util.Map[String, _], isSerdeForRecordKeys: Boolean): Unit = {
     inner.serializer.configure(serdeConfig, isSerdeForRecordKeys)
