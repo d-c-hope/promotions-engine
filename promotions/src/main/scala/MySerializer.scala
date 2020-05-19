@@ -26,14 +26,15 @@ class MySerializer() extends Serializer[CustomerReward] {
     inner.configure(serializerConfig, isSerializerForRecordKeys)
   }
 
-  override def serialize(topic: String, customerAcc: CustomerReward): Array[Byte] = {
+  override def serialize(topic: String, customerReward: CustomerReward): Array[Byte] = {
+    // writer schema
     val filename = "/customer_reward.avsc"
     val fileContents = Source.fromURL(getClass.getResource(filename)).mkString
     val parser = new Parser
     val schema = parser.parse(fileContents)
     val avroRecord = new GenericData.Record(schema)
-
-    avroRecord.put("customerID", customerAcc.customerID)
+    avroRecord.put("customerID", customerReward.customerID)
+    println("serializing " + customerReward.customerID + "avro record" + avroRecord)
     inner.serialize(topic, avroRecord)
   }
 

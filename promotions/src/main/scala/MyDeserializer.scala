@@ -4,8 +4,12 @@ import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.common.annotation.InterfaceStability
 import org.apache.kafka.common.serialization.Deserializer
 import java.util
+
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 import io.confluent.kafka.serializers.KafkaAvroDeserializer
+import org.apache.avro.Schema.Parser
+
+import scala.io.Source
 
 class MyDeserializer() extends Deserializer[CustomerReward] {
 
@@ -21,8 +25,13 @@ class MyDeserializer() extends Deserializer[CustomerReward] {
   }
 
   override def deserialize(topic: String, bytes: Array[Byte]): CustomerReward = {
-    val record = inner.deserialize(topic, bytes).asInstanceOf[GenericRecord]
-    val customerID = record.get("customerID").asInstanceOf[String]
+    // reader schema
+    val filename = "/customer_reward.avsc"
+    val fileContents = Source.fromURL(getClass.getResource(filename)).mkString
+    val parser = new Parser
+    val schema = parser.parse(fileContents)
+    val record = inner.deserialize(topic, bytes, schema).asInstanceOf[GenericRecord]
+    val customerID = record.get("customerID").toString
     CustomerReward(customerID)
   }
 

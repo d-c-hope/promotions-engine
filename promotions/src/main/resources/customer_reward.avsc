@@ -6,6 +6,6 @@
      {
        "name" : "customerID",
        "type" : "string"
-     },
+     }
    ]
 }

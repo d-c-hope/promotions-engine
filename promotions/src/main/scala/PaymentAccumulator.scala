@@ -161,6 +161,8 @@ object PaymentAccumulator {
     val jmap = new java.util.HashMap[String, String]()
     jmap.put("schema.registry.url", "http://localhost:8081")
     avroSerde.configure(jmap, false)
+    val myAvroSerde = new MyAvroSerde
+    myAvroSerde.configure(jmap, false)
 
     val streamsBuilder = new StreamsBuilder
 
@@ -179,14 +181,14 @@ object PaymentAccumulator {
     val rewardsStream = setupRewardsStream(joinedStream)
 //    rewardsStream.print(Printed.toSysOut())
 //    accTable.toStream().print(Printed.toSysOut())
-    rewardsStream.to("test-topic-rewards1", Produced.`with`(Serdes.String(), new MyAvroSerde))
+    rewardsStream.to("test-topic-rewards1", Produced.`with`(Serdes.String(), myAvroSerde))
 //    accTable.toStream().to("test-topic-acctable1")
 
     val kEventStream = new KafkaStreams(streamsBuilder.build, props)
 
     val latch = new CountDownLatch(1)
     // attach shutdown handler to catch control-c
-    Runtime.getRuntime.addShutdownHook(new Thread("streams-wordcount-shutdown-hook") {
+    Runtime.getRuntime.addShutdownHook(new Thread("streams-shutdown-hook") {
       override def run(): Unit = {
         print("Stopping the streams")
         kEventStream.close
