@@ -58,60 +58,8 @@ object IMS {
 
   }
 
-  def setupAccumlationTable(joinedStream: KStream[String, CustomerEventJoin]):KTable[String, CustomerAccumulation] = {
 
-    val gr: Grouped[String, CustomerEventJoin] = Grouped.`with`(Serdes.String(), new CustomerEventJoinSerde)
 
-    val aggInit: Initializer[CustomerAccumulation] = () => CustomerAccumulation("", 0)
-    val agg: Aggregator[String, CustomerEventJoin, CustomerAccumulation] =
-      (key: String, value: CustomerEventJoin, aggregate: CustomerAccumulation) => {
-        CustomerAccumulation(value.customerID, aggregate.stakeAccumulation + value.stake)
-      }
-
-    val accTable = joinedStream.groupByKey(gr).aggregate(aggInit, agg, Materialized.`with`(Serdes.String(), new CustomerAccumulationSerde))
-    return accTable
-  }
-
-  def setupRewardsStream(joinedStream: KStream[String, CustomerEventJoin]): KStream[String, CustomerReward] = {
-
-    val transformerSupplier: ValueTransformerSupplier[CustomerEventJoin, CustomerReward] = () => {
-      new ValueTransformer[CustomerEventJoin, CustomerReward]() {
-
-        var context: ProcessorContext = null
-        var store: KeyValueStore[String, Int] = null
-
-        override def init(context: ProcessorContext): Unit = {
-          store = context.getStateStore("stakeAccumulationStore").asInstanceOf[KeyValueStore[String, Int]]
-        }
-
-        override def transform(value: CustomerEventJoin): CustomerReward = {
-          val rewardAccumulated = store.get(value.customerID)
-          val eventStake = value.stake
-          if (rewardAccumulated + eventStake > 1000) {
-            store.put(value.customerID, 0)
-            return CustomerReward(value.customerID)
-          }
-          else {
-            store.put(value.customerID, rewardAccumulated + eventStake)
-            return null;
-          }
-
-        }
-
-        override def close(): Unit = {
-
-        }
-      }
-    }
-
-    val transformedStream = joinedStream.transformValues(transformerSupplier, "stakeAccumulationStore")
-
-    val passNoneNull: Predicate[String, CustomerReward] = (key: String, value: CustomerReward) => {
-      if(value != null) true else false
-    }
-    transformedStream.filter(passNoneNull)
-
-  }
 
 
   def main(args: Array[String]): Unit = {
@@ -125,22 +73,12 @@ object IMS {
     props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
     props.put("schema.registry.url", "http://my-schema-registry:8081")
 
-    val avroSerde = new GenericAvroSerde
-    val jmap = new java.util.HashMap[String, String]()
-    jmap.put("schema.registry.url", "http://localhost:8081")
-    avroSerde.configure(jmap, false)
 
     val rewardSerde = GetSerdes.getCustomerRewardAvroSerde(jmap)
     val accSerde = GetSerdes.getCustomerAccumulationAvroSerde(jmap)
 
     val streamsBuilder = new StreamsBuilder
 
-    val storeSupplier: KeyValueBytesStoreSupplier = Stores.inMemoryKeyValueStore("stakeAccumulationStore");
-    val storeBuilder: StoreBuilder[KeyValueStore[String, Integer]]  =
-      Stores.keyValueStoreBuilder(storeSupplier,
-        Serdes.String(),
-        Serdes.Integer());
-    streamsBuilder.addStateStore(storeBuilder)
 
     val customerTable: KTable[String, Customer]  = setupCustomerStream(props, streamsBuilder, avroSerde)
     val gameEventStream = setupGameEventStream(props, streamsBuilder, avroSerde)
