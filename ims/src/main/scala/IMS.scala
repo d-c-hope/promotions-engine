@@ -1,6 +1,5 @@
 package com.craftcodehouse.ims
 
-import com.craftcodehouse.ims.serdes
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.{Deserializer, Serde, Serdes, Serializer}
 import org.apache.kafka.streams.KafkaStreams
@@ -10,10 +9,6 @@ import org.apache.kafka.streams.kstream.{Produced, _}
 import java.util.Properties
 import java.util.concurrent.CountDownLatch
 
-import io.confluent.kafka.streams.serdes.avro.GenericAvroSerde
-import org.apache.kafka.streams.processor.{ProcessorContext, StateStore}
-import org.apache.kafka.streams.state.{KeyValueBytesStoreSupplier, KeyValueStore, StoreBuilder, StoreSupplier, Stores}
-
 
 object IMS {
 
@@ -22,32 +17,37 @@ object IMS {
     println("\n*******************\nRunning the app\n\n\n")
 
     val props = new Properties
-    props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-imsx237593")
+    props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-imsx237596")
     props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
     props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0.asInstanceOf[Integer])
     props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
 
     val streamsBuilder = new StreamsBuilder
 
-//    val serde: Serde[Profile_created] = Serdes.serdeFrom(new serdes.JsonSerializer[Profile_created],
-//      new serdes.JsonDeserializer[Profile_created])
     val serde: Serde[Profile_created] = Serdes.serdeFrom(new serdes.JsonSerializer[Profile_created],
       new serdes.JsonDeserializer[Profile_created])
     val profileCreatedStream = streamsBuilder.stream("test-topic-profilecreated1",
       Consumed.`with`(Serdes.String(), serde))
 
-    val usQueue: Predicate[String, Profile_created] = (key: String, value: Profile_created) => {
-      if(value.territory == 0) true else false
-    }
-    val gbQueue: Predicate[String, Profile_created] = (key: String, value: Profile_created) => {
-      if(value.territory == 1) true else false
+    val territoryPredicates = List(0,1,2).map { x=>
+      val p: Predicate[String, Profile_created] = (key: String, value: Profile_created) => {
+        if(value.territory == x) true else false
+      }
+      p
     }
 
-    val streams = profileCreatedStream.branch(usQueue, gbQueue)
+    val usQueue = territoryPredicates(0)
+    val gbQueue = territoryPredicates(1)
+    val ieQueue = territoryPredicates(2)
 
-    streams(0).print(Printed.toSysOut())
-//    streams(0).to("test-topic-profileus1", Produced.`with`(Serdes.String(), serde))
-//    streams(1).to("test-topic-profilegb1", Produced.`with`(Serdes.String(), serde))
+    val streams = profileCreatedStream.branch(usQueue, gbQueue, ieQueue)
+
+//    streams(0).print(Printed.toSysOut())
+//    streams(1).print(Printed.toSysOut())
+//    streams(2).print(Printed.toSysOut())
+    streams(0).to("test-topic-profileus1", Produced.`with`(Serdes.String(), serde))
+    streams(1).to("test-topic-profilegb1", Produced.`with`(Serdes.String(), serde))
+    streams(2).to("test-topic-profileie1", Produced.`with`(Serdes.String(), serde))
 
     val kEventStream = new KafkaStreams(streamsBuilder.build, props)
 

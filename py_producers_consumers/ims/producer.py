@@ -2,6 +2,7 @@
 from confluent_kafka import SerializingProducer
 from confluent_kafka.serialization import StringSerializer
 
+from enum import Enum
 import random
 import time
 from uuid import uuid4
@@ -21,6 +22,12 @@ firstNames = ["david", "andrew", "mark", "jason", "philippa","tommy", "harold",
               "guido", "martin", "kate", "anna", "ralph"]
 lastNames = ["smith", "jones", "adams", "fielder", "thomas", "ferguson", "rossum",
              "george", "knapp", "taylor", "li", "heslop"]
+class Territory(Enum):
+    us = 0
+    gb = 1
+    ie = 2
+
+territories = [Territory.us, Territory.gb, Territory.ie]
 
 def produceProfileCreatedEvent():
     for i in range(20):
@@ -30,16 +37,17 @@ def produceProfileCreatedEvent():
         lastNameIdx = random.randint(0, 11)
         firstName = firstNames[firstNameIdx]
         lastName = lastNames[lastNameIdx]
+        territoriesIndex = random.randint(0,2)
 
         key = "{}".format(profileId)
         value = {
                     "profileId": profileId,
                     "firstName":firstName,
                     "lastName":lastName,
-                    "territory" : 1
+                    "territory" : territories[territoriesIndex].value
                 }
         valueStr = json.dumps(value)
-        print("adding event")
+        print("adding event" + valueStr)
 
         producer.produce(topic="test-topic-profilecreated1", key=key, value=valueStr)
 

@@ -1,15 +1,16 @@
-from confluent_kafka import KafkaError
-from confluent_kafka.avro import AvroConsumer
-from confluent_kafka.avro.serializer import SerializerError
+from confluent_kafka import DeserializingConsumer
+from confluent_kafka.serialization import StringDeserializer
 
 
-c = AvroConsumer({
-    'bootstrap.servers': 'localhost:9092',
-    'group.id': 'groupid',
-    'schema.registry.url': 'http://localhost:8081',
-    'auto.offset.reset': 'earliest'})
+consumer_conf = {'bootstrap.servers': 'localhost:9092',
+                 'key.serializer': string_serialiser,
+                 'value.serializer': string_serialiser}
 
-c.subscribe(['test-topic-rewards1', 'test-topic-acctable1'])
+consumer = SerializingConsumer(consumer_conf)
+
+
+
+consumer.subscribe(['test-topic-profileus1'])
 
 while True:
     try:
