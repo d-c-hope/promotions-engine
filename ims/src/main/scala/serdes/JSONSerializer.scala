@@ -8,7 +8,7 @@ import org.apache.kafka.common.serialization.Serializer
 import java.util
 
 
-class JsonPOJOSerializer[T]() extends Serializer[T] {
+class JsonSerializer[T]() extends Serializer[T] {
 
   final private val objectMapper = new ObjectMapper
 

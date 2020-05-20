@@ -21,6 +21,8 @@ ThisBuild / resolvers += "confluent" at "https://packages.confluent.io/maven/"
 // now done the latter as version conflicts were a problem
 ThisBuild / libraryDependencies += "io.confluent" % "kafka-streams-avro-serde" % "5.4.0"
 
+ThisBuild / libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.11.0"
+ThisBuild / libraryDependencies += "com.fasterxml.jackson.core" % "jackson-databind" % "2.10.1"
 
 
 

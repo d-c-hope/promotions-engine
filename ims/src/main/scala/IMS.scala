@@ -1,7 +1,6 @@
 package com.craftcodehouse.ims
 
 import com.craftcodehouse.ims.serdes
-
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.{Deserializer, Serde, Serdes, Serializer}
 import org.apache.kafka.streams.KafkaStreams
@@ -30,11 +29,25 @@ object IMS {
 
     val streamsBuilder = new StreamsBuilder
 
+//    val serde: Serde[Profile_created] = Serdes.serdeFrom(new serdes.JsonSerializer[Profile_created],
+//      new serdes.JsonDeserializer[Profile_created])
+    val serde: Serde[Profile_created] = Serdes.serdeFrom(new serdes.JsonSerializer[Profile_created],
+      new serdes.JsonDeserializer[Profile_created])
     val profileCreatedStream = streamsBuilder.stream("test-topic-profilecreated1",
-      Consumed.`with`(Serdes.String(), De))
+      Consumed.`with`(Serdes.String(), serde))
 
+    val usQueue: Predicate[String, Profile_created] = (key: String, value: Profile_created) => {
+      if(value.territory == 0) true else false
+    }
+    val gbQueue: Predicate[String, Profile_created] = (key: String, value: Profile_created) => {
+      if(value.territory == 1) true else false
+    }
 
-    rewardsStream.to("test-topic-rewards1", Produced.`with`(Serdes.String(), rewardSerde))
+    val streams = profileCreatedStream.branch(usQueue, gbQueue)
+
+    streams(0).print(Printed.toSysOut())
+//    streams(0).to("test-topic-profileus1", Produced.`with`(Serdes.String(), serde))
+//    streams(1).to("test-topic-profilegb1", Produced.`with`(Serdes.String(), serde))
 
     val kEventStream = new KafkaStreams(streamsBuilder.build, props)
 
@@ -58,43 +71,3 @@ object IMS {
     System.exit(0)
   }
 }
-
-
-
-//def setupCustomerEventJoiner(gameEventStream: KStream[String, GameEvent],
-//customerTable: KTable[String, Customer]) : KStream[String, CustomerEventJoin] = {
-//
-//  val valueJoiner: ValueJoiner[GameEvent, Customer, CustomerEventJoin] = (gameEvent:GameEvent, customer: Customer) => {
-//  CustomerEventJoin(customer.customerID, customer.email, customer.firstName,
-//  gameEvent.game, gameEvent.action, gameEvent.stake)
-//}
-//
-//
-//  val joinedStream = gameEventStream.leftJoin(customerTable, valueJoiner,
-//  Joined.`with`(Serdes.String(), new GameEventSerde, new GenericCaseClassSerde[Customer]))
-//
-//  joinedStream
-//
-//}
-
-
-//def setupProfileStream(props: Properties, streamsBuilder: StreamsBuilder,
-//avroSerde: GenericAvroSerde): KStream[String, GameEvent] = {
-//
-//  Serdes.serdeFrom(iserializer, ideserializer)
-//
-//  val gameEventAvroStream = streamsBuilder.stream("test-topic-profilecreated1",
-//  Consumed.`with`(Serdes.String(), De))
-//  val gameEventStream: KStream[String, GameEvent] = gameEventAvroStream.mapValues { value =>
-//  //      println("Processing game event")
-//  val customerID = value.get("customerID").toString
-//  val game = value.get("game").toString
-//  val action = value.get("action").toString
-//  val stake = value.get("stake").asInstanceOf[Int]
-//  val gameEvent = GameEvent(game, action, customerID, stake)
-//
-//  gameEvent
-//}
-//
-//  return gameEventStream
-//}

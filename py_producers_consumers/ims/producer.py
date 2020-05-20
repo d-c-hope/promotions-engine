@@ -35,12 +35,13 @@ def produceProfileCreatedEvent():
         value = {
                     "profileId": profileId,
                     "firstName":firstName,
-                    "lastName":lastName
+                    "lastName":lastName,
+                    "territory" : 1
                 }
         valueStr = json.dumps(value)
         print("adding event")
 
-        producer.produce(topic="test-topic-createprofile1", key=key, value=valueStr)
+        producer.produce(topic="test-topic-profilecreated1", key=key, value=valueStr)
 
         time.sleep(sleepTime)
 
