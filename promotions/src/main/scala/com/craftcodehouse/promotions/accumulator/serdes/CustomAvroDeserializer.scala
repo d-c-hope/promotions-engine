@@ -31,19 +31,3 @@ class CustomAvroDeserializer[T](schema: Schema,
     inner.close()
   }
 }
-
-
-// reader schema
-//    val filename = "/customer_reward.avsc"
-//    val fileContents = Source.fromURL(getClass.getResource(filename)).mkString
-//    val parser = new Parser
-//    val schema = parser.parse(fileContents)
-
-//val customerID = record.get("customerID").toString
-//CustomerReward(customerID)
-
-
-//  def this(client: SchemaRegistryClient) {
-//    this()
-//    inner = new KafkaAvroDeserializer(client)
-//  }

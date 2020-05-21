@@ -3,7 +3,6 @@ package com.craftcodehouse.promotions.accumulator
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
 import java.util.Date
 
-import com.craftcodehouse.promotions.accumulator.CustomerEventJoin
 import org.apache.kafka.common.serialization.{Deserializer, Serde, Serializer}
 
 
@@ -15,7 +14,6 @@ class CustomerEventJoinSerializer extends Serializer[CustomerEventJoin] {
     val date = new Date()
     val timeStamp = date.getTime
 
-    //    println("Topic is " + topic + " Customer before ser is " + data + " time is " + timeStamp)
     val out = new ByteArrayOutputStream
     val os = new ObjectOutputStream(out)
     os.writeObject(data)

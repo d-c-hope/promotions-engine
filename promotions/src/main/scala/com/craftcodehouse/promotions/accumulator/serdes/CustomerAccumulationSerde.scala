@@ -14,7 +14,6 @@ class CustomerAccumulationSerializer extends Serializer[CustomerAccumulation] {
     val date = new Date()
     val timeStamp = date.getTime
 
-    //    println("Topic is " + topic + " Customer before ser is " + data + " time is " + timeStamp)
     val out = new ByteArrayOutputStream
     val os = new ObjectOutputStream(out)
     os.writeObject(data)

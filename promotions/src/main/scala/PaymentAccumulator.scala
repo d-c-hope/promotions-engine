@@ -10,12 +10,9 @@ import java.util.Properties
 import java.util.concurrent.CountDownLatch
 
 import io.confluent.kafka.streams.serdes.avro.GenericAvroSerde
-import org.apache.avro.Schema.Parser
-import org.apache.avro.generic.{GenericData, GenericRecord}
 import org.apache.kafka.streams.processor.{ProcessorContext, StateStore}
 import org.apache.kafka.streams.state.{KeyValueBytesStoreSupplier, KeyValueStore, StoreBuilder, StoreSupplier, Stores}
 
-import scala.io.Source
 
 
 object PaymentAccumulator {
@@ -26,7 +23,7 @@ object PaymentAccumulator {
     val gameEventAvroStream = streamsBuilder.stream("test-topic-game1",
       Consumed.`with`(Serdes.String(), avroSerde))
     val gameEventStream: KStream[String, GameEvent] = gameEventAvroStream.mapValues { value =>
-//      println("Processing game event")
+
       val customerID = value.get("customerID").toString
       val game = value.get("game").toString
       val action = value.get("action").toString
@@ -45,7 +42,6 @@ object PaymentAccumulator {
     val customerAvroStream = streamsBuilder.stream("test-topic-customer1",
       Consumed.`with`(Serdes.String(), avroSerde))
     val customerStream: KStream[String, Customer] = customerAvroStream.mapValues { value =>
-//      println("Processing customer")
       val customerID = value.get("customerID").toString
       val email = value.get("email").toString
       val firstName = value.get("firstName").toString
@@ -92,6 +88,8 @@ object PaymentAccumulator {
     return accTable
   }
 
+  val eventStakeThreshold = 1000
+
   def setupRewardsStream(joinedStream: KStream[String, CustomerEventJoin]): KStream[String, CustomerReward] = {
 
     val transformerSupplier: ValueTransformerSupplier[CustomerEventJoin, CustomerReward] = () => {
@@ -107,7 +105,7 @@ object PaymentAccumulator {
         override def transform(value: CustomerEventJoin): CustomerReward = {
           val rewardAccumulated = store.get(value.customerID)
           val eventStake = value.stake
-          if (rewardAccumulated + eventStake > 1000) {
+          if (rewardAccumulated + eventStake > eventStakeThreshold) {
             store.put(value.customerID, 0)
             return CustomerReward(value.customerID)
           }
@@ -115,7 +113,6 @@ object PaymentAccumulator {
             store.put(value.customerID, rewardAccumulated + eventStake)
             return null;
           }
-
         }
 
         override def close(): Unit = {
@@ -135,21 +132,6 @@ object PaymentAccumulator {
 
 
   def main(args: Array[String]): Unit = {
-
-    println("\n*******************\nRunning the app\n\n\n")
-
-//    val filename = "/customer_reward.avsc"
-//    val fileContents = Source.fromURL(getClass.getResource(filename)).mkString
-//    println(fileContents)
-//
-//    import org.apache.avro.generic.GenericData
-//    import org.apache.avro.generic.GenericRecord
-//    val parser = new Parser
-//    val schema = parser.parse(fileContents)
-//    val avroRecord = new GenericData.Record(schema)
-//    avroRecord.put("f1", "value1")
-//    avroRecord.
-
 
     val props = new Properties
     props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-promotionsx237593")
@@ -190,13 +172,12 @@ object PaymentAccumulator {
 
     val latch = new CountDownLatch(1)
     // attach shutdown handler to catch control-c
-    Runtime.getRuntime.addShutdownHook(new Thread("streams-shutdown-hook") {
-      override def run(): Unit = {
-        print("Stopping the streams")
-        kEventStream.close
-        latch.countDown()
-      }
-    })
+    scala.sys.addShutdownHook {
+      print("Stopping the streams")
+      kEventStream.close
+      latch.countDown()
+    }
+
     try {
       println("Starting the stream")
       kEventStream.start

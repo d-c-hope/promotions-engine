@@ -53,21 +53,22 @@ object IMS {
 
     val latch = new CountDownLatch(1)
     // attach shutdown handler to catch control-c
-    Runtime.getRuntime.addShutdownHook(new Thread("streams-shutdown-hook") {
-      override def run(): Unit = {
-        print("Stopping the streams")
-        kEventStream.close
-        latch.countDown()
-      }
-    })
+    scala.sys.addShutdownHook {
+      print("Stopping the streams")
+      kEventStream.close
+      latch.countDown()
+    }
+
     try {
       println("Starting the stream")
       kEventStream.start
       latch.await()
     } catch {
+
       case e: Throwable =>
-        System.exit(1)
+        {println("about to exit"); System.exit(1)}
     }
+    println("about to exit")
     System.exit(0)
   }
 }

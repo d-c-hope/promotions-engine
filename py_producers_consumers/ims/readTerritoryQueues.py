@@ -1,23 +1,25 @@
 from confluent_kafka import DeserializingConsumer
 from confluent_kafka.serialization import StringDeserializer
+# from confluent_kafka.avro.serializer import SerializerError
 
+string_serialiser = StringDeserializer('utf_8')
 
 consumer_conf = {'bootstrap.servers': 'localhost:9092',
-                 'key.serializer': string_serialiser,
-                 'value.serializer': string_serialiser}
+                 'group.id' : "groupid1234",
+                 'key.deserializer': string_serialiser,
+                 'value.deserializer': string_serialiser}
 
-consumer = SerializingConsumer(consumer_conf)
-
+consumer = DeserializingConsumer(consumer_conf)
 
 
 consumer.subscribe(['test-topic-profileus1'])
 
 while True:
     try:
-        msg = c.poll(10)
+        msg = consumer.poll(10)
         print("poll returned {}".format(msg))
 
-    except SerializerError as e:
+    except Exception as e:
         print("Message deserialization failed for {}: {}".format(msg, e))
         break
 

@@ -9,9 +9,6 @@ import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import java.util
 
-import com.craftcodehouse.ims.Profile_created
-import com.fasterxml.jackson.core.`type`.TypeReference
-
 import scala.reflect.ClassTag
 import scala.reflect._
 
@@ -26,7 +23,6 @@ class JsonDeserializer[T](implicit m: scala.reflect.ClassTag[T]) extends Deseria
   }
 
   override def deserialize(topic: String, bytes: Array[Byte]): T = {
-    println("deserializing")
     val data = objectMapper.readValue(bytes, m.runtimeClass).asInstanceOf[T]
     return data
   }
